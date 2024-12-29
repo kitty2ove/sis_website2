@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>투자 게임</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .balance {
+            text-align: right;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        .result {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .result.red {
+            color: red;
+        }
+        .result.blue {
+            color: blue;
+        }
+        .round {
+            margin-top: 30px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #555;
+        }
+        select, input {
+            padding: 10px;
+            width: 100%;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .spacing {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>투자 게임</h1>
+    <div class="balance">보유 금액: <span id="balance">200</span> 코인</div>
+    
+    <div id="game">
+        <div class="round" id="round-section">
+            <h2 id="round-title">라운드 1</h2>
+            <label for="card">카드를 선택하세요:</label>
+            <select id="card">
+                <option value="tech">기술 개발 (최소 40코인 이상)</option>
+                <option value="marketing">마케팅 확대 (최소 10코인 이상)</option>
+                <option value="production">생산 확대 (최소 30코인 이상)</option>
+                <option value="collection">수거 확대 (최소 20코인 이상)</option>
+            </select>
+
+            <label for="amount">투자 금액을 입력하세요:</label>
+            <input type="number" id="amount" placeholder="투자 금액" min="0" />
+
+            <button id="confirm-btn" onclick="calculate()">확인</button>
+            <button id="retry-btn" class="disabled" onclick="retryInput()">찬스 1회 (다시 입력)</button>
+        </div>
+
+        <div class="result spacing" id="result-section"></div>
+        <button id="next-round" class="spacing" style="display:none;" onclick="nextRound()">다음 라운드로 이동</button>
+    </div>
+</div>
+
+<script>
+    let round = 1;
+    let balance = 200;
+    let initialBalance = 200;
+    let retryUsed = false;
+    let confirmClicked = false;
+    const multipliers = {
+        1: { tech: 1.5, marketing: 0.6, production: 2.0, collection: 0.4 },
+        2: { tech: 1.2, marketing: 0.7, production: 0.5, collection: 1.5 },
+        3: { tech: 2.0, marketing: 1.0, production: 1.5, collection: 1.5 },
+        4: { tech: 0.5, marketing: 1.0, production: 2.0, collection: 1.5 },
+        5: { tech: 1.0, marketing: 0.5, production: 2.0, collection: 1.2 },
+        6: { tech: 0.8, marketing: 2.3, production: 1.7, collection: 1.0 }
+    };
+    const minInvestments = { tech: 40, marketing: 10, production: 30, collection: 20 };
+    const history = [];
+
+    function calculate() {
+        if (confirmClicked) return;
+        const card = document.getElementById("card").value;
+        const amount = parseInt(document.getElementById("amount").value);
+
+        if (isNaN(amount) || amount < minInvestments[card]) {
+            alert("최소 투자금액을 확인해주세요.");
+            return;
+        }
+
+        const multiplier = multipliers[round][card];
+        const result = Math.floor(amount * multiplier);
+        const newBalance = balance - amount + result;
+        const difference = newBalance - balance;
+        balance = newBalance;
+
+        document.getElementById("balance").textContent = balance;
+        const resultSection = document.getElementById("result-section");
+        resultSection.innerHTML = `결과: ${result} 코인 (배율: ${multiplier}) <br> 변화: <span class="${difference >= 0 ? 'red' : 'blue'}">${difference >= 0 ? '+' : ''}${difference} 코인</span>`;
+
+        history.push({ round: round, change: difference });
+        confirmClicked = true;
+        document.getElementById("retry-btn").classList.remove('disabled');
+        document.getElementById("next-round").style.display = 'block';
+    }
+
+    function retryInput() {
+        if (retryUsed) {
+            alert("다시 입력은 1회만 가능합니다.");
+            return;
+        }
+        retryUsed = true;
+        confirmClicked = false;
+        document.getElementById("retry-btn").classList.add('disabled');
+        balance = initialBalance;
+        document.getElementById("balance").textContent = balance;
+        document.getElementById("result-section").innerHTML = "";
+        document.getElementById("amount").value = "";
+        document.getElementById("next-round").style.display = 'none';
+    }
+
+    function nextRound() {
+        round++;
+        confirmClicked = false;
+        initialBalance = balance;
+
+        if (round > 6) {
+            showFinalResults();
+        } else {
+            document.getElementById("round-title").textContent = `라운드 ${round}`;
+            document.getElementById("result-section").innerHTML = "";
+            document.getElementById("next-round").style.display = 'none';
+            document.getElementById("amount").value = "";
+            document.getElementById("retry-btn").classList.add('disabled');
+        }
+    }
+
+    function showFinalResults() {
+        const finalSection = document.createElement('div');
+        finalSection.className = 'container';
+
+        finalSection.innerHTML = `
+            <h1>투자 게임</h1>
+            <h2>최종 투자 결과: ${balance} 코인</h2>`;
+        
+        document.body.innerHTML = '';
+        document.body.appendChild(finalSection);
+    }
+</script>
+</body>
+</html>
